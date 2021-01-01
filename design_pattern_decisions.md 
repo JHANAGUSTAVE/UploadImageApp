@@ -1,0 +1,26 @@
+# Design Patterns
+
+The following are design patterns we implemented in the SimpleStorage Smart Contract per best practices.
+
+## Storage Optimization
+
+Writing to blockchain can be expensive, as data is stored forever. We must consider smart ways to use memory while storing minimum amount in blockchain.
+
+IPFS is perfect for storing large amounts of data. We only need to place the immutable, permanent IPFS links into a blockchain transaction. Doing so, we timestamp and secure the content, without having to put the data on the chain itself. 
+
+Awesome, right?
+
+## Circuit Breaker
+
+The circuit breaker pattern allows the owner to disable or enable a contract by a runtime toggle. This would be desirable in situations where there is a live contract where a bug has been detected. Freezing the contract would be beneficial for reducing harm before a fix can be implemented.
+
+```javascript
+contract CircuitBreaker {
+
+  bool public stopped = false;
+
+  modifier stopInEmergency { require(!stopped); _; }
+
+  function shootFoot() stopInEmergency public { … }
+
+}

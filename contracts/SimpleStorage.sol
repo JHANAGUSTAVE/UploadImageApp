@@ -7,12 +7,55 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract SimpleStorage {
 
-  address payable owner;
-  constructor() public {
-      owner = msg.sender; 
-     }
+    string ipfsHash;
+     string name;
 
-     modifier onlyOwner {
+    mapping(address=>Image[]) private images;
+    struct Image{
+        string name;
+        string imageHash;
+       }
+
+       // Defining a constructor    
+        constructor() public{   
+        name = 'my name'; 
+        owner=msg.sender; 
+    } 
+
+   function uploadImage(string memory hash, string memory ipfs) public{
+       images[msg.sender].push(Image(hash,ipfs)); //
+   }
+
+    function set(string memory x) public {
+        ipfsHash = x;
+    }
+
+    function get() public view returns (string memory) {
+        return ipfsHash;
+    }
+
+    function changeName(string memory _name) public onlyOwner {
+    name = _name;
+  }
+
+    // Private state variable 
+    address payable owner;  
+  
+    // Function to get  
+    // address of owner 
+    function getOwner( 
+    ) public view returns (address) {     
+        return owner; 
+    } 
+  
+    // Function to return  
+    // current balance of owner 
+    function getBalance( 
+    ) public view returns(uint256){ 
+        return owner.balance; 
+    } 
+
+    modifier onlyOwner {
         require(
             msg.sender == owner,
             "Only owner can call this function."
@@ -20,115 +63,18 @@ contract SimpleStorage {
         _;
     }
 
+
+
+    
+
+
+//Using SafeMath
   using SafeMath for uint;
     function exec(uint a, uint b) public pure returns (uint){
         return a.add(b);
     }
  
  
-    /** 
-    * @title Represents a single image which is owned by someone. 
-    */
-    struct Image {
-        string ipfsHash;        // IPFS hash
-        string title;           // Image title
-        string description;     // Image description
-        string tags;            // Image tags in comma separated format
-        uint256 uploadedOn;     // Uploaded timestamp
-    }
-
-
-      // Maps owner to their images
-    mapping (address  => Image[]) public ownerToImages;
-
-     //circuit breaker
-    bool private stopped = false;
-
-
-    /**
-    * @dev Indicates that a user has uploaded a new image
-    * @param _owner The owner of the image
-    * @param _ipfsHash The IPFS hash
-    * @param _title The image title
-    * @param _description The image description
-    * @param _tags The image tags
-    * @param _uploadedOn The upload timestamp
-    */
-    event LogImageUploaded(
-        address indexed _owner, 
-        string _ipfsHash, 
-        string _title, 
-        string _description, 
-        string _tags,
-        uint256 _uploadedOn
-    );
-
-
-    /**
-    * @dev Indicates that the owner has performed an emergency stop
-    * @param _owner The owner of the image
-    * @param _stop Indicates whether to stop or resume
-    */
-    event LogEmergencyStop(
-        address indexed _owner, 
-        bool _stop
-    );
-
-    /**
-    * @dev Prevents execution in the case of an emergency
-    */
-    modifier stopInEmergency { 
-        require(!stopped); 
-        _;
-    }
-
-        /** 
-        * @notice associate an image entry with the owner i.e. sender address
-        * @dev Controlled by circuit breaker
-        * @param _ipfsHash The IPFS hash
-        * @param _title The image title
-        * @param _description The image description
-        * @param _tags The image tag(s)
-        */
-    function uploadImage(
-        string memory _ipfsHash, 
-        string memory _title, 
-        string memory _description, 
-        string memory _tags
-    ) public stopInEmergency returns (bool _success) {
-            
-        require(bytes(_ipfsHash).length == 46);
-        require(bytes(_title).length > 0 && bytes(_title).length <= 256);
-        require(bytes(_description).length < 1024);
-        require(bytes(_tags).length > 0 && bytes(_tags).length <= 256);
-
-        uint256 uploadedOn = now;
-        Image memory image = Image(
-            _ipfsHash,
-            _title,
-            _description,
-            _tags,
-            uploadedOn
-        );
-
-        ownerToImages[msg.sender].push(image);
-
-        emit LogImageUploaded(
-            msg.sender,
-            _ipfsHash,
-            _title,
-            _description,
-            _tags,
-            uploadedOn
-        );
-
-        _success = true;
-    }
-
-
-
-
-
   //security features to protect 
 
   mapping (address => uint256) public balanceOf;
@@ -153,63 +99,26 @@ contract SimpleStorage {
     }
 
 
-    
+    // Used by Circuit Breaker pattern to switch contract on / off
+    bool private stopped = false;
 
-
-
-
-    /** 
-    * @notice Returns the number of images associated with the given address
-    * @dev Controlled by circuit breaker
-    * @param _owner The owner address
-    * @return The number of images associated with a given address
+    /**
+    * @dev Indicates that the owner has performed an emergency stop
+    * @param _owner The owner of the image
+    * @param _stop Indicates whether to stop or resume
     */
-    // function getImageCount(address  _owner) 
-    //     public view 
-    //     stopInEmergency 
-    //     returns (uint256) 
-    // {
-    //     require( _owner != 0x0);
-    //     return ownerToImages[_owner].length;
-    // }
+    event LogEmergencyStop(
+        address indexed _owner, 
+        bool _stop
+    );
 
-
-    /** 
-    * @notice Returns the image at index in the ownership array
-    * @dev Controlled by circuit breaker
-    * @param _owner The owner address
-    * @param _index The index of the image to return
-    * @return _ipfsHash The IPFS hash
-    * @return _title The image title
-    * @return _description The image description
-    * @return _tags image Then image tags
-    * @return _uploadedOn The uploaded timestamp
-    */ 
-    // function getImage(address _owner, uint8 _index) 
-    //     public stopInEmergency view returns (
-    //     string memory _ipfsHash, 
-    //     string memory _title, 
-    //     string memory _description, 
-    //     string memory _tags,
-    //     uint256 _uploadedOn
-    // ) {
-
-    //     require(_owner != 0x0);
-    //     require(_index >= 0 && _index <= 2**8 - 1);
-    //     require(ownerToImages[_owner].length > 0);
-
-    //     Image storage image = ownerToImages[_owner][_index];
-        
-    //     return (
-    //         image.ipfsHash, 
-    //         image.title, 
-    //         image.description, 
-    //         image.tags, 
-    //         image.uploadedOn
-    //     );
-    // }
-
-
+    /**
+    * @dev Prevents execution in the case of an emergency
+    */
+    modifier stopInEmergency { 
+        require(!stopped); 
+        _;
+    }
 
 
      /**
